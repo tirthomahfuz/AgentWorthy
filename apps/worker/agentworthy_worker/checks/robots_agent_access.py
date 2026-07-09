@@ -7,9 +7,12 @@ from urllib import robotparser
 
 from agentworthy.models import CheckCategory, CheckStatus
 from agentworthy_worker.checks.base import AGENT_BOTS, CheckResult
+from agentworthy_worker.checks.context import CrawlContext
 
 
-def check_robots_agent_access(root_url: str, client: httpx.Client) -> CheckResult:
+def check_robots_agent_access(ctx: CrawlContext) -> CheckResult:
+    root_url = ctx.root_url
+    client = ctx.client
     parsed = urlparse(root_url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
 
@@ -37,7 +40,7 @@ def check_robots_agent_access(root_url: str, client: httpx.Client) -> CheckResul
             evidence={"robots_url": robots_url, "status_code": 404},
             plain_explanation=(
                 "No robots.txt file was found. While not required, having one helps AI agents "
-                "understand your crawling preferences. None of the major AI bots are explicitly blocked."
+                "understand your crawling preferences."
             ),
         )
 
@@ -83,9 +86,7 @@ def check_robots_agent_access(root_url: str, client: httpx.Client) -> CheckResul
             status=CheckStatus.FAIL,
             evidence=evidence,
             plain_explanation=(
-                f"Your robots.txt blocks these AI agent crawlers: {', '.join(blocked_bots)}. "
-                "This means ChatGPT, Claude, Perplexity, and Google's AI may not be able to "
-                "read or interact with your site."
+                f"Your robots.txt blocks these AI agent crawlers: {', '.join(blocked_bots)}."
             ),
         )
 

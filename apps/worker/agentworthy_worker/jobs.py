@@ -4,21 +4,19 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-import httpx
 from sqlalchemy.orm import Session
 
 from agentworthy.database import SessionLocal
-from agentworthy.models import Check, CheckStatus, PublicScan, Scan, ScanStatus
-from agentworthy_worker.checks.runner import calculate_score, run_implemented_checks
-from agentworthy_worker.crawler import CRAWLER_USER_AGENT, crawl_site
+from agentworthy.models import Check, PublicScan, Scan, ScanStatus
+from agentworthy_worker.checks.base import CheckResult
+from agentworthy_worker.checks.runner import calculate_score, category_breakdown, run_all_checks
+from agentworthy_worker.crawler import CRAWLER_USER_AGENT
+from agentworthy_worker.scan_context import build_crawl_context
 
 logger = logging.getLogger(__name__)
 
 
-def _save_check(db: Session, scan_id: uuid.UUID, result: object) -> None:
-    from agentworthy_worker.checks.base import CheckResult
-
-    assert isinstance(result, CheckResult)
+def _save_check(db: Session, scan_id: uuid.UUID, result: CheckResult) -> None:
     check = Check(
         id=uuid.uuid4(),
         scan_id=scan_id,
@@ -36,8 +34,7 @@ def _save_check(db: Session, scan_id: uuid.UUID, result: object) -> None:
 
 def run_static_scan(scan_id: str) -> None:
     """Main RQ job: run static check suite for a scan."""
-    correlation_id = scan_id
-    log = logging.LoggerAdapter(logger, {"correlation_id": correlation_id})
+    log = logging.LoggerAdapter(logger, {"correlation_id": scan_id})
     log.info("Starting static scan")
 
     db = SessionLocal()
@@ -60,54 +57,46 @@ def run_static_scan(scan_id: str) -> None:
         scan.status = ScanStatus.CRAWLING
         db.commit()
 
-        log.info("Crawling site", extra={"url": root_url})
-        pages = crawl_site(root_url, max_pages=25)
-        homepage_html = pages.get(root_url) or (list(pages.values())[0] if pages else None)
-
-        scan.status = ScanStatus.SCORING
-        db.commit()
-
-        rendered_html: str | None = None
-        try:
-            from playwright.sync_api import sync_playwright
-
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page(user_agent=CRAWLER_USER_AGENT)
-                page.goto(root_url, wait_until="networkidle", timeout=30000)
-                rendered_html = page.content()
-                browser.close()
-        except Exception as e:
-            log.warning("Playwright render failed, using raw HTML only", extra={"error": str(e)})
+        import httpx
 
         headers = {"User-Agent": CRAWLER_USER_AGENT}
         with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as client:
-            results = run_implemented_checks(root_url, client, rendered_html)
+            log.info("Building crawl context", extra={"url": root_url})
+            ctx = build_crawl_context(client, root_url, max_pages=25, scan_id=scan_id)
+
+            scan.status = ScanStatus.SCORING
+            db.commit()
+
+            results = run_all_checks(ctx)
 
         for result in results:
             _save_check(db, scan_uuid, result)
             db.commit()
 
         score, grade = calculate_score(results)
+        breakdown = category_breakdown(results)
+
         scan.overall_score = score
         scan.letter_grade = grade
         scan.status = ScanStatus.COMPLETE
         scan.finished_at = datetime.now(UTC)
-        scan.site_type = "unknown"
+        scan.site_type = ctx.site_type or "other"
 
         public_scan.score = score
         db.commit()
 
-        log.info("Scan complete", extra={"score": score, "grade": grade})
+        log.info(
+            "Scan complete",
+            extra={"score": score, "grade": grade, "breakdown": breakdown},
+        )
 
     except Exception as e:
         log.exception("Scan failed")
-        if db:
-            scan = db.get(Scan, uuid.UUID(scan_id))
-            if scan:
-                scan.status = ScanStatus.FAILED
-                scan.error_message = str(e)
-                scan.finished_at = datetime.now(UTC)
-                db.commit()
+        scan = db.get(Scan, uuid.UUID(scan_id))
+        if scan:
+            scan.status = ScanStatus.FAILED
+            scan.error_message = str(e)
+            scan.finished_at = datetime.now(UTC)
+            db.commit()
     finally:
         db.close()
