@@ -1,0 +1,12 @@
+# Example Business
+
+> A sample business website for AI agents.
+
+## Key Pages
+- [Home](https://example.com/): Main landing page
+- [Pricing](https://example.com/pricing): Our pricing plans
+- [Contact](https://example.com/contact): Get in touch
+
+## Contact
+- Email: hello@example.com
+- Phone: +1-555-0100
