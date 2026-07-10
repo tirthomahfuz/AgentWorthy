@@ -58,7 +58,15 @@ export interface AuthSyncResponse {
   access_token: string;
 }
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+/** Browser uses same-origin proxy on Vercel; server/SSR uses API_URL directly. */
+export function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") return "/api/backend";
+  return process.env.API_URL || "http://localhost:8000";
+}
+
+/** @deprecated use getApiUrl() — kept for backwards compatibility */
+export const API_URL = typeof window !== "undefined" ? "/api/backend" : (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:8000");
 
 async function apiFetch<T>(
   path: string,
@@ -70,7 +78,7 @@ async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${getApiUrl()}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "Request failed");

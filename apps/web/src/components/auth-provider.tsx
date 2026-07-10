@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
-  API_URL,
   syncUser,
   type Site,
   listSites,

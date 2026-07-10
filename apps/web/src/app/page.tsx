@@ -62,17 +62,15 @@ export default function HomePage() {
               <FeatureCard
                 icon={Shield}
                 title="Actionability"
-                description="Can agents actually transact? Semantic forms, accessible CTAs, and navigable checkout flows."
+                description="Can agents complete tasks? Semantic forms, accessible CTAs, and reachable checkout flows."
               />
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Agentworthy. AI agent readiness auditing.
-        </div>
+      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+        <p>Agentworthy — AI agent readiness auditing</p>
       </footer>
     </div>
   );
@@ -89,9 +87,7 @@ function FeatureCard({
 }) {
   return (
     <div className="text-center p-6">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-accent/10 text-accent mb-4">
-        <Icon className="h-6 w-6" />
-      </div>
+      <Icon className="h-10 w-10 text-accent mx-auto mb-4" />
       <h3 className="font-semibold mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>
