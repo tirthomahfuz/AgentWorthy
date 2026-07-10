@@ -19,6 +19,7 @@ build/
 *.swp
 
 # Next.js
+.next/
 apps/web/.next/
 apps/web/out/
 

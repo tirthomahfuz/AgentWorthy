@@ -11,11 +11,13 @@ In [Vercel Dashboard](https://vercel.com) → your project → **Settings → Ge
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `apps/web` |
-| **Framework Preset** | Next.js |
+| **Root Directory** | *(leave empty — use repo root)* |
+| **Framework Preset** | Next.js (auto-detected) |
 | **Node.js Version** | 22.x |
 
-Leave Build Command and Install Command empty (uses `apps/web/vercel.json`).
+The repo root now contains `vercel.json`, `next.config.js`, and `src/` (symlink to the web app) so Vercel builds without extra configuration.
+
+**Important:** If you previously set Root Directory to `apps/web`, **clear it** (leave the field empty) and redeploy.
 
 ## Step 2 — Environment variables
 
