@@ -21,6 +21,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from agentworthy.database import Base
 
 
+def _pg_enum(enum_cls: type[enum.Enum], name: str) -> Enum:
+    return Enum(enum_cls, name=name, values_callable=lambda x: [e.value for e in x])
+
+
 class Plan(str, enum.Enum):
     FREE = "free"
     STARTER = "starter"
@@ -77,7 +81,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     name: Mapped[str | None] = mapped_column(String(255))
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255))
-    plan: Mapped[Plan] = mapped_column(Enum(Plan, name="plan"), default=Plan.FREE, nullable=False)
+    plan: Mapped[Plan] = mapped_column(_pg_enum(Plan, "plan"), default=Plan.FREE, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -112,9 +116,9 @@ class Scan(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     site_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"))
     status: Mapped[ScanStatus] = mapped_column(
-        Enum(ScanStatus, name="scan_status"), default=ScanStatus.QUEUED, nullable=False
+        _pg_enum(ScanStatus, "scan_status"), default=ScanStatus.QUEUED, nullable=False
     )
-    trigger: Mapped[ScanTrigger] = mapped_column(Enum(ScanTrigger, name="scan_trigger"), nullable=False)
+    trigger: Mapped[ScanTrigger] = mapped_column(_pg_enum(ScanTrigger, "scan_trigger"), nullable=False)
     overall_score: Mapped[int | None] = mapped_column(Integer)
     letter_grade: Mapped[str | None] = mapped_column(String(2))
     site_type: Mapped[str | None] = mapped_column(String(64))
@@ -137,9 +141,9 @@ class Check(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("scans.id"), nullable=False)
-    category: Mapped[CheckCategory] = mapped_column(Enum(CheckCategory, name="check_category"), nullable=False)
+    category: Mapped[CheckCategory] = mapped_column(_pg_enum(CheckCategory, "check_category"), nullable=False)
     check_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[CheckStatus] = mapped_column(Enum(CheckStatus, name="check_status"), nullable=False)
+    status: Mapped[CheckStatus] = mapped_column(_pg_enum(CheckStatus, "check_status"), nullable=False)
     weight: Mapped[int] = mapped_column(Integer, nullable=False)
     evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     plain_explanation: Mapped[str | None] = mapped_column(Text)
@@ -161,7 +165,7 @@ class Simulation(Base):
     task_key: Mapped[str] = mapped_column(String(64), nullable=False)
     task_description: Mapped[str] = mapped_column(Text, nullable=False)
     outcome: Mapped[SimulationOutcome] = mapped_column(
-        Enum(SimulationOutcome, name="simulation_outcome"), nullable=False
+        _pg_enum(SimulationOutcome, "simulation_outcome"), nullable=False
     )
     steps: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     failure_point: Mapped[str | None] = mapped_column(Text)
@@ -196,7 +200,7 @@ class Alert(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
     scan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("scans.id"), nullable=False)
-    type: Mapped[AlertType] = mapped_column(Enum(AlertType, name="alert_type"), nullable=False)
+    type: Mapped[AlertType] = mapped_column(_pg_enum(AlertType, "alert_type"), nullable=False)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

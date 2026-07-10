@@ -43,3 +43,7 @@ Thumbs.db
 # Playwright
 playwright-report/
 test-results/
+gate1_output.txt
+gate2-*.txt
+gate2-dashboard.html
+local/

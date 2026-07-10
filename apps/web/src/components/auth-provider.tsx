@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import {
   API_URL,
   syncUser,
@@ -87,7 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return getSiteSparkline(accessToken, siteId);
     },
     signInEmail: async (email) => {
-      await signIn("email", { email, redirect: false, callbackUrl: "/dashboard" });
+      const csrfRes = await fetch("/api/auth/csrf");
+      const { csrfToken } = await csrfRes.json();
+      await fetch("/api/auth/signin/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          email,
+          csrfToken,
+          callbackUrl: "/dashboard",
+          json: "true",
+        }),
+      });
     },
     signOutUser: () => signOut({ callbackUrl: "/" }),
   };

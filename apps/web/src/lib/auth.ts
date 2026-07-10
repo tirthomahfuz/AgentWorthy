@@ -1,10 +1,15 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import EmailProvider from "next-auth/providers/email";
+import { createDevAuthAdapter } from "@/lib/auth-adapter";
+import { assertProductionEmailConfig } from "@/lib/auth-guard";
+
+assertProductionEmailConfig();
 
 const resendKey = process.env.RESEND_API_KEY;
 
 export const authOptions: NextAuthOptions = {
+  adapter: createDevAuthAdapter(),
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: "/login",
@@ -18,6 +23,12 @@ export const authOptions: NextAuthOptions = {
         if (!resendKey) {
           console.log("\n[Agentworthy Dev Auth] Magic link for", identifier);
           console.log(url, "\n");
+          try {
+            const fs = await import("fs");
+            fs.writeFileSync("/tmp/agentworthy-magic-link.txt", url);
+          } catch {
+            // ignore in edge runtime
+          }
           return;
         }
         await fetch("https://api.resend.com/emails", {

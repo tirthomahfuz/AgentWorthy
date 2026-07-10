@@ -4,6 +4,13 @@ All notable changes to Agentworthy are documented in this file.
 
 ## [Unreleased]
 
+### Gate 2 completion (Part A)
+
+- Full Playwright e2e: magic-link login, add site, fail/pass verification, scan, dashboard score + sparkline
+- Dev NextAuth file adapter for email magic links; production guard when RESEND_API_KEY missing
+- SQLAlchemy enum value fix (`_pg_enum`) so Postgres receives lowercase enum values
+- Proof artifacts: `docs/proof/gate2-dashboard.png`, gate scripts for A2/A3 validation
+
 ### Stage 2 — Auth, dashboard, site management
 
 - NextAuth.js with email magic link (dev console fallback) and Google OAuth
@@ -12,7 +19,7 @@ All notable changes to Agentworthy are documented in this file.
 - Authenticated scans (manual trigger, 25/200 pages by verified status, one active scan per site)
 - Dashboard with site cards, Recharts sparklines, empty states
 - Settings skeleton (profile, sites, billing placeholder)
-- Cross-user 403/404 tests, verification unit tests, Playwright e2e scaffold
+- Cross-user 403/404 tests, verification unit tests, Playwright e2e (full flow)
 
 ### Stage 1 — Complete static check suite
 
