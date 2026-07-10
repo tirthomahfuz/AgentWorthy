@@ -1,4 +1,10 @@
-import type { Adapter, AdapterUser, VerificationToken } from "next-auth/adapters";
+import type {
+  Adapter,
+  AdapterAccount,
+  AdapterSession,
+  AdapterUser,
+  VerificationToken,
+} from "next-auth/adapters";
 import * as fs from "fs";
 
 const STORE_PATH = "/tmp/agentworthy-nextauth-store.json";
@@ -23,7 +29,7 @@ function saveStore(store: Store): void {
 /** Minimal adapter for Email magic links in dev (JWT sessions, no persistent users). */
 export function createDevAuthAdapter(): Adapter {
   return {
-    async createUser(user) {
+    async createUser(user: Omit<AdapterUser, "id">) {
       const store = loadStore();
       const id = crypto.randomUUID();
       const created: AdapterUser = { ...user, id, emailVerified: user.emailVerified ?? null };
@@ -31,16 +37,16 @@ export function createDevAuthAdapter(): Adapter {
       saveStore(store);
       return created;
     },
-    async getUser(id) {
+    async getUser(id: string) {
       return loadStore().users.find((u) => u.id === id) ?? null;
     },
-    async getUserByEmail(email) {
+    async getUserByEmail(email: string) {
       return loadStore().users.find((u) => u.email === email) ?? null;
     },
-    async getUserByAccount() {
+    async getUserByAccount(_account: Pick<AdapterAccount, "provider" | "providerAccountId">) {
       return null;
     },
-    async updateUser(user) {
+    async updateUser(user: Partial<AdapterUser> & Pick<AdapterUser, "id">) {
       const store = loadStore();
       const idx = store.users.findIndex((u) => u.id === user.id);
       if (idx === -1) throw new Error("User not found");
@@ -48,22 +54,24 @@ export function createDevAuthAdapter(): Adapter {
       saveStore(store);
       return store.users[idx];
     },
-    async deleteUser() {},
-    async linkAccount() {
+    async deleteUser(_userId: string) {},
+    async linkAccount(_account: AdapterAccount) {
       return undefined;
     },
-    async unlinkAccount() {},
-    async createSession() {
+    async unlinkAccount(_params: Pick<AdapterAccount, "provider" | "providerAccountId">) {},
+    async createSession(_session: { sessionToken: string; userId: string; expires: Date }) {
       throw new Error("Sessions use JWT strategy");
     },
-    async getSessionAndUser() {
+    async getSessionAndUser(_sessionToken: string) {
       return null;
     },
-    async updateSession() {
+    async updateSession(
+      _session: Partial<AdapterSession> & Pick<AdapterSession, "sessionToken">
+    ) {
       throw new Error("Sessions use JWT strategy");
     },
-    async deleteSession() {},
-    async createVerificationToken(token) {
+    async deleteSession(_sessionToken: string) {},
+    async createVerificationToken(token: VerificationToken) {
       const store = loadStore();
       store.verificationTokens.push(token);
       saveStore(store);
@@ -78,7 +86,7 @@ export function createDevAuthAdapter(): Adapter {
       }
       return token;
     },
-    async useVerificationToken({ identifier, token }) {
+    async useVerificationToken({ identifier, token }: { identifier: string; token: string }) {
       const store = loadStore();
       const idx = store.verificationTokens.findIndex(
         (t) => t.identifier === identifier && t.token === token

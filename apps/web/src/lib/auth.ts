@@ -2,9 +2,6 @@ import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import EmailProvider from "next-auth/providers/email";
 import { createDevAuthAdapter } from "@/lib/auth-adapter";
-import { assertProductionEmailConfig } from "@/lib/auth-guard";
-
-assertProductionEmailConfig();
 
 const resendKey = process.env.RESEND_API_KEY;
 
@@ -21,6 +18,10 @@ export const authOptions: NextAuthOptions = {
       from: process.env.EMAIL_FROM || "Agentworthy <onboarding@agentworthy.dev>",
       async sendVerificationRequest({ identifier, url }) {
         if (!resendKey) {
+          if (process.env.NODE_ENV === "production") {
+            const { assertProductionEmailConfig } = await import("@/lib/auth-guard");
+            assertProductionEmailConfig();
+          }
           console.log("\n[Agentworthy Dev Auth] Magic link for", identifier);
           console.log(url, "\n");
           try {

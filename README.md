@@ -13,6 +13,26 @@ packages/
   shared/   — Shared TypeScript types
 ```
 
+## Deploying the Web App (Vercel)
+
+This is an npm **monorepo**. Vercel must build `apps/web`, not the repo root.
+
+1. Import the GitHub repo in Vercel
+2. Set **Root Directory** to `apps/web`
+3. Leave **Framework Preset** as Next.js (or use the included `apps/web/vercel.json`)
+4. Add environment variables:
+   - `NEXTAUTH_SECRET` — generate with `openssl rand -base64 32`
+   - `NEXTAUTH_URL` — your Vercel URL (e.g. `https://your-app.vercel.app`)
+   - `NEXT_PUBLIC_API_URL` — your API URL (e.g. `https://api.yourdomain.com`)
+   - `RESEND_API_KEY` — required in production for magic-link email
+5. Deploy
+
+If you see `404: NOT_FOUND`, the Root Directory is almost certainly wrong — it must be `apps/web`.
+
+## Deploying the Web App (Netlify)
+
+Use the included `netlify.toml` at the repo root. Base directory is set to `apps/web`.
+
 ## Quick Start (Local Development)
 
 ```bash
