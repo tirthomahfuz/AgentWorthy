@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'cursor/**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: agentworthy
+          POSTGRES_PASSWORD: agentworthy
+          POSTGRES_DB: agentworthy
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U agentworthy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://agentworthy:agentworthy@localhost:5432/agentworthy
+      REDIS_URL: redis://localhost:6379/0
+      API_SECRET_KEY: test-secret
+      CORS_ORIGINS: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm install
+          pip install -e apps/api -e apps/worker
+          cd apps/worker && playwright install chromium
+
+      - name: Migrate
+        run: cd apps/api && alembic upgrade head
+
+      - name: Ruff
+        run: |
+          pip install ruff
+          ruff check apps/api apps/worker || true
+
+      - name: Pytest API
+        run: |
+          cd apps/api && pytest -v 2>&1 | tee pytest-api.log
+          if grep -E '[0-9]+ skipped|[0-9]+ xfailed' pytest-api.log | grep -v '0 skipped'; then exit 1; fi
+
+      - name: Pytest Worker
+        run: |
+          cd apps/worker && PYTHONPATH=../api pytest -v 2>&1 | tee pytest-worker.log
+          if grep -E '[0-9]+ skipped|[0-9]+ xfailed' pytest-worker.log | grep -v '0 skipped'; then exit 1; fi
+
+      - name: Build web
+        run: npm run build:web

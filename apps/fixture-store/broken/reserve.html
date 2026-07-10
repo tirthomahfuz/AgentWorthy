@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html><head><title>Reserve (Broken)</title></head>
+<body>
+  <h1>Reservations</h1>
+  <p>Pick a date on the calendar below:</p>
+  <canvas id="datepicker" width="300" height="200" role="img" aria-label="Calendar"></canvas>
+  <input type="text" placeholder="Name" />
+  <input type="text" />
+  <button>Submit</button>
+  <script>
+    const c = document.getElementById('datepicker');
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#eee'; ctx.fillRect(0,0,300,200);
+    ctx.fillStyle = '#333'; ctx.fillText('Click a date', 20, 30);
+  </script>
+</body></html>

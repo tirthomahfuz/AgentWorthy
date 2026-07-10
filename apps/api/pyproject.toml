@@ -17,6 +17,8 @@ dependencies = [
     "python-multipart>=0.0.18",
     "pyjwt>=2.10.0",
     "dnspython>=2.7.0",
+    "stripe>=11.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]

@@ -74,6 +74,8 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXTAUTH_SECRET: dev-nextauth-secret-change-in-production
+      NEXTAUTH_URL: http://localhost:3000
     depends_on:
       - api
     volumes:
@@ -81,6 +83,26 @@ services:
       - ./packages/shared:/app/packages/shared
       - /app/apps/web/node_modules
       - /app/node_modules
+
+  fixture-store:
+    image: nginx:alpine
+    ports:
+      - "8780:80"
+    volumes:
+      - ./apps/fixture-store:/usr/share/nginx/html:ro
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://agentworthy:agentworthy@postgres:5432/agentworthy
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

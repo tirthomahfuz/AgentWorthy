@@ -4,6 +4,16 @@ All notable changes to Agentworthy are documented in this file.
 
 ## [Unreleased]
 
+### Stages 3–7 (in progress on `cursor/full-product-8be4`)
+
+- Stage 3: Agent simulation engine (Playwright loop, safety rails, fixture store, journey templates)
+- Stage 4: Fix generation via Sonnet (batched by category, JSON-LD validation, llms.txt builder)
+- Stage 5: Stripe billing (checkout, webhooks, plan limits, customer portal)
+- Stage 6: Scan diff engine, scheduler container, alert rows
+- Stage 7: SSRF guard, CI workflow, Makefile, DEPLOYMENT.md, seed script
+- Migration `002_stage3_7`: fix_applied, api_tokens, stripe_events, deploy_hint columns
+- 63 pytest tests passing (13 API + 50 worker)
+
 ### Gate 2 completion (Part A)
 
 - Full Playwright e2e: magic-link login, add site, fail/pass verification, scan, dashboard score + sparkline

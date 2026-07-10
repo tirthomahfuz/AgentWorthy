@@ -16,6 +16,7 @@ from agentworthy.redis_client import (
     increment_rate_limit,
 )
 from agentworthy.schemas import CheckResult, PublicScanRequest, PublicScanResponse, ScanReport
+from agentworthy_worker.security.ssrf import validate_scan_url
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -35,6 +36,25 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+@router.get("/plans")
+def public_plans() -> list[dict]:
+    from agentworthy.plan_limits import PLAN_LIMITS
+    return [
+        {
+            "id": k,
+            "name": v.name,
+            "price_usd": v.price_usd,
+            "max_sites": v.max_sites,
+            "pages_per_scan": v.pages_per_scan,
+            "simulations_per_scan": v.simulations_per_scan,
+            "scan_frequency": v.scan_frequency,
+            "api_access": v.api_access,
+            "max_seats": v.max_seats,
+        }
+        for k, v in PLAN_LIMITS.items()
+    ]
+
+
 @router.post("/scan", response_model=PublicScanResponse)
 def create_public_scan(
     body: PublicScanRequest,
@@ -51,7 +71,7 @@ def create_public_scan(
         )
 
     try:
-        normalized = normalize_url(body.url)
+        normalized = validate_scan_url(normalize_url(body.url))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

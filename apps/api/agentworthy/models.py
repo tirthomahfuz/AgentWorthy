@@ -88,6 +88,7 @@ class User(Base):
     )
 
     sites: Mapped[list["Site"]] = relationship(back_populates="user")
+    api_tokens: Mapped[list["ApiToken"]] = relationship(back_populates="user")
 
 
 class Site(Base):
@@ -99,6 +100,8 @@ class Site(Base):
     display_name: Mapped[str | None] = mapped_column(String(255))
     verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_token: Mapped[str | None] = mapped_column(String(64))
+    read_only: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    logo_url: Mapped[str | None] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -125,6 +128,8 @@ class Scan(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_message: Mapped[str | None] = mapped_column(Text)
+    correlation_id: Mapped[str | None] = mapped_column(String(64))
+    llm_tokens_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -149,6 +154,9 @@ class Check(Base):
     plain_explanation: Mapped[str | None] = mapped_column(Text)
     fix_code: Mapped[str | None] = mapped_column(Text)
     fix_language: Mapped[str | None] = mapped_column(String(32))
+    deploy_hint: Mapped[str | None] = mapped_column(Text)
+    fix_before: Mapped[str | None] = mapped_column(Text)
+    fix_after: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -203,6 +211,7 @@ class Alert(Base):
     type: Mapped[AlertType] = mapped_column(_pg_enum(AlertType, "alert_type"), nullable=False)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -221,6 +230,8 @@ class PublicScan(Base):
     score: Mapped[int | None] = mapped_column(Integer)
     ip_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     scan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("scans.id"))
+    share_slug: Mapped[str | None] = mapped_column(String(64))
+    is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -232,7 +243,39 @@ class LLMUsage(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("scans.id"))
+    simulation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    purpose: Mapped[str | None] = mapped_column(String(64))
     model: Mapped[str] = mapped_column(String(64), nullable=False)
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class FixApplied(Base):
+    __tablename__ = "fix_applied"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=False)
+    check_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ApiToken(Base):
+    __tablename__ = "api_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="api_tokens")
+
+
+class StripeEvent(Base):
+    __tablename__ = "stripe_events"
+
+    event_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
