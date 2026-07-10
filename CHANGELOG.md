@@ -4,6 +4,16 @@ All notable changes to Agentworthy are documented in this file.
 
 ## [Unreleased]
 
+### Stage 2 — Auth, dashboard, site management
+
+- NextAuth.js with email magic link (dev console fallback) and Google OAuth
+- POST /auth/sync — JWT access tokens, users table sync on first login
+- Sites CRUD with meta tag / DNS TXT verification
+- Authenticated scans (manual trigger, 25/200 pages by verified status, one active scan per site)
+- Dashboard with site cards, Recharts sparklines, empty states
+- Settings skeleton (profile, sites, billing placeholder)
+- Cross-user 403/404 tests, verification unit tests, Playwright e2e scaffold
+
 ### Stage 1 — Complete static check suite
 
 - Implemented all 20 static checks with CrawlContext pattern

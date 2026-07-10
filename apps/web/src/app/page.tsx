@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ScanForm } from "@/components/scan-form";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Bot, Search, Code, Shield } from "lucide-react";
@@ -11,7 +12,12 @@ export default function HomePage() {
             <Bot className="h-6 w-6 text-accent" />
             <span className="font-semibold text-lg">Agentworthy</span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
+              Sign in
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

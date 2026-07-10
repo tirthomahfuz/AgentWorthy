@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://agentworthy:agentworthy@localhost:5432/agentworthy"
     redis_url: str = "redis://localhost:6379/0"
     api_secret_key: str = "dev-secret-key"
+    nextauth_secret: str = ""
     cors_origins: str = "http://localhost:3000"
     free_scans_per_day: int = 3
     free_crawl_max_pages: int = 25

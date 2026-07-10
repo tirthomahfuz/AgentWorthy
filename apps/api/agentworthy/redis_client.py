@@ -41,10 +41,24 @@ def increment_rate_limit(ip_hash: str) -> None:
 
 
 def enqueue_scan(scan_id: str) -> None:
-    """Enqueue a scan job to RQ."""
+    """Enqueue a public scan job to RQ."""
     from rq import Queue
 
     settings = get_settings()
     r = get_redis()
     queue = Queue("scans", connection=r)
     queue.enqueue("agentworthy_worker.jobs.run_static_scan", scan_id, job_timeout="10m")
+
+
+def enqueue_site_scan(scan_id: str, root_url: str, max_pages: int) -> None:
+    from rq import Queue
+
+    r = get_redis()
+    queue = Queue("scans", connection=r)
+    queue.enqueue(
+        "agentworthy_worker.jobs.run_site_scan",
+        scan_id,
+        root_url,
+        max_pages,
+        job_timeout="15m",
+    )

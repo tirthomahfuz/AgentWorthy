@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+import httpx
 from sqlalchemy.orm import Session
 
 from agentworthy.database import SessionLocal
@@ -32,11 +33,8 @@ def _save_check(db: Session, scan_id: uuid.UUID, result: CheckResult) -> None:
     db.add(check)
 
 
-def run_static_scan(scan_id: str) -> None:
-    """Main RQ job: run static check suite for a scan."""
+def _execute_scan(scan_id: str, root_url: str, max_pages: int) -> None:
     log = logging.LoggerAdapter(logger, {"correlation_id": scan_id})
-    log.info("Starting static scan")
-
     db = SessionLocal()
     try:
         scan_uuid = uuid.UUID(scan_id)
@@ -45,24 +43,13 @@ def run_static_scan(scan_id: str) -> None:
             log.error("Scan not found")
             return
 
-        public_scan = db.query(PublicScan).filter(PublicScan.scan_id == scan_uuid).first()
-        if not public_scan:
-            log.error("Public scan record not found")
-            scan.status = ScanStatus.FAILED
-            scan.error_message = "No URL associated with scan"
-            db.commit()
-            return
-
-        root_url = public_scan.url
         scan.status = ScanStatus.CRAWLING
         db.commit()
 
-        import httpx
-
         headers = {"User-Agent": CRAWLER_USER_AGENT}
         with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as client:
-            log.info("Building crawl context", extra={"url": root_url})
-            ctx = build_crawl_context(client, root_url, max_pages=25, scan_id=scan_id)
+            log.info("Building crawl context", extra={"url": root_url, "max_pages": max_pages})
+            ctx = build_crawl_context(client, root_url, max_pages=max_pages, scan_id=scan_id)
 
             scan.status = ScanStatus.SCORING
             db.commit()
@@ -82,13 +69,12 @@ def run_static_scan(scan_id: str) -> None:
         scan.finished_at = datetime.now(UTC)
         scan.site_type = ctx.site_type or "other"
 
-        public_scan.score = score
-        db.commit()
+        public_scan = db.query(PublicScan).filter(PublicScan.scan_id == scan_uuid).first()
+        if public_scan:
+            public_scan.score = score
 
-        log.info(
-            "Scan complete",
-            extra={"score": score, "grade": grade, "breakdown": breakdown},
-        )
+        db.commit()
+        log.info("Scan complete", extra={"score": score, "grade": grade, "breakdown": breakdown})
 
     except Exception as e:
         log.exception("Scan failed")
@@ -100,3 +86,31 @@ def run_static_scan(scan_id: str) -> None:
             db.commit()
     finally:
         db.close()
+
+
+def run_static_scan(scan_id: str) -> None:
+    """Public free scan job."""
+    log = logging.LoggerAdapter(logger, {"correlation_id": scan_id})
+    log.info("Starting public static scan")
+    db = SessionLocal()
+    try:
+        scan_uuid = uuid.UUID(scan_id)
+        public_scan = db.query(PublicScan).filter(PublicScan.scan_id == scan_uuid).first()
+        if not public_scan:
+            scan = db.get(Scan, scan_uuid)
+            if scan:
+                scan.status = ScanStatus.FAILED
+                scan.error_message = "No URL associated with scan"
+                db.commit()
+            return
+        root_url = public_scan.url
+    finally:
+        db.close()
+    _execute_scan(scan_id, root_url, max_pages=25)
+
+
+def run_site_scan(scan_id: str, root_url: str, max_pages: int = 25) -> None:
+    """Authenticated site scan job."""
+    log = logging.LoggerAdapter(logger, {"correlation_id": scan_id})
+    log.info("Starting site scan", extra={"url": root_url, "max_pages": max_pages})
+    _execute_scan(scan_id, root_url, max_pages=max_pages)

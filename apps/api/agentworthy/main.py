@@ -6,7 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from agentworthy.config import get_settings
+from agentworthy.routes.auth import router as auth_router
 from agentworthy.routes.public import router as public_router
+from agentworthy.routes.scans import router as scans_router
+from agentworthy.routes.sites import router as sites_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +34,9 @@ app.add_middleware(
 )
 
 app.include_router(public_router)
+app.include_router(auth_router)
+app.include_router(sites_router)
+app.include_router(scans_router)
 
 
 @app.get("/health")
